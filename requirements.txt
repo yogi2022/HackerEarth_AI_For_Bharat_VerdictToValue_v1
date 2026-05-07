@@ -1,0 +1,50 @@
+# ═══════════════════════════════════════════════════════════════
+# VerdictToValue — Python Dependencies (All Free / Open Source)
+# ═══════════════════════════════════════════════════════════════
+
+# Web Framework
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9      # File uploads
+aiofiles==23.2.1
+
+# PDF Processing
+pdfplumber==0.11.0           # Primary PDF text extractor
+PyMuPDF==1.24.3              # Fallback + image extraction (fitz)
+pypdf==4.2.0                 # Metadata extraction
+
+# OCR (for scanned PDFs)
+pytesseract==0.3.10          # Python wrapper for Tesseract
+Pillow==10.3.0               # Image processing
+
+# NLP & AI (Free HuggingFace Models)
+transformers==4.41.0         # BART summarization, classification
+torch==2.3.0                 # PyTorch (CPU version is free)
+sentencepiece==0.2.0         # Tokenizer for some models
+sentence-transformers==2.7.0 # Semantic embeddings
+
+# spaCy for NER
+spacy==3.7.4
+# After install, run: python -m spacy download en_core_web_sm
+
+# Document Intelligence
+docling==1.16.0              # IBM's free document parser (optional, graceful fallback)
+
+# Data & Storage
+pydantic==2.7.1              # Data validation
+pydantic-settings==2.2.1
+sqlite3                      # Built into Python stdlib
+
+# Utilities
+python-dateutil==2.9.0       # Date parsing
+regex==2024.5.15             # Advanced regex for legal patterns
+tqdm==4.66.4                 # Progress bars
+loguru==0.7.2                # Better logging
+python-jose==3.3.0           # JWT (for future auth)
+
+# Testing
+pytest==8.2.0
+httpx==0.27.0                # Async HTTP client for tests
+
+# Dev tools
+python-dotenv==1.0.1

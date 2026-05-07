@@ -1,0 +1,2384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VerdictToValue — Legal AI Decision Support</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f4f1;
+  --bg-tertiary: #eeede9;
+  --bg-overlay: rgba(0,0,0,0.45);
+  --text-primary: #1a1917;
+  --text-secondary: #6b6a65;
+  --text-tertiary: #9c9a93;
+  --border-light: rgba(0,0,0,0.08);
+  --border-mid: rgba(0,0,0,0.14);
+  --border-strong: rgba(0,0,0,0.22);
+  --green: #1D9E75;
+  --green-dark: #0F6E56;
+  --green-light: #E1F5EE;
+  --green-pale: #f0fbf7;
+  --red: #E24B4A;
+  --red-light: #FCEBEB;
+  --amber: #EF9F27;
+  --amber-light: #FAEEDA;
+  --blue: #378ADD;
+  --blue-light: #E6F1FB;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --font: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  --sidebar-width: 232px;
+  --header-height: 58px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1e1e1c;
+    --bg-secondary: #272725;
+    --bg-tertiary: #141413;
+    --text-primary: #e8e6df;
+    --text-secondary: #9c9a93;
+    --text-tertiary: #6b6a65;
+    --border-light: rgba(255,255,255,0.06);
+    --border-mid: rgba(255,255,255,0.10);
+    --border-strong: rgba(255,255,255,0.18);
+    --green-light: #0a2e1f;
+    --green-pale: #071a12;
+    --red-light: #2a0f0f;
+    --amber-light: #2a1e08;
+    --blue-light: #0a1e33;
+  }
+}
+html, body { height: 100%; }
+body {
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font-family: var(--font); }
+a { color: var(--green); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════════════════════════ */
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════════════════════════ */
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--bg-primary);
+  border-right: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  z-index: 20;
+}
+.sidebar-logo {
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+.logo-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--green) 0%, #0F6E56 100%);
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.logo-name { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+.logo-tagline { font-size: 11px; color: var(--text-secondary); }
+
+.sidebar-section { padding: 12px 10px 4px; }
+.sidebar-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  padding: 0 8px;
+  margin-bottom: 4px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
+  position: relative;
+}
+.nav-item:hover { background: var(--bg-secondary); color: var(--text-primary); }
+.nav-item.active { background: var(--green-light); color: var(--green-dark); }
+.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 5px;
+}
+.nav-badge.green { background: var(--green); }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border-light);
+}
+.sidebar-footer-label { font-size: 10px; color: var(--text-tertiary); margin-bottom: 3px; }
+.sidebar-footer-model { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MAIN AREA
+═══════════════════════════════════════════════════════════════════ */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.topbar {
+  height: var(--header-height);
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  gap: 16px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.topbar-title { font-size: 15px; font-weight: 600; flex: 1; }
+.topbar-sub { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+.content { flex: 1; overflow-y: auto; padding: 28px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-mid);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, transform 0.1s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--bg-secondary); border-color: var(--border-strong); }
+.btn:active { transform: scale(0.98); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-primary { background: var(--green); border-color: var(--green); color: #fff; }
+.btn-primary:hover { background: var(--green-dark); border-color: var(--green-dark); }
+.btn-danger { border-color: var(--red); color: var(--red); }
+.btn-danger:hover { background: var(--red-light); }
+.btn-ghost { border-color: transparent; background: transparent; }
+.btn-ghost:hover { background: var(--bg-secondary); border-color: var(--border-light); }
+.btn-amber { border-color: var(--amber); color: var(--amber); }
+.btn-amber:hover { background: var(--amber-light); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════════════════════════════ */
+.card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+}
+.card + .card { margin-top: 16px; }
+.card-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGES (shown/hidden)
+═══════════════════════════════════════════════════════════════════ */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE: UPLOAD
+═══════════════════════════════════════════════════════════════════ */
+.upload-zone {
+  border: 2px dashed var(--border-mid);
+  border-radius: var(--radius-xl);
+  padding: 56px 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: var(--bg-primary);
+}
+.upload-zone:hover, .upload-zone.dragging {
+  border-color: var(--green);
+  background: var(--green-pale);
+}
+.upload-zone-icon { font-size: 44px; margin-bottom: 14px; line-height: 1; }
+.upload-zone-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.upload-zone-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; }
+
+.file-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.file-icon { font-size: 30px; flex-shrink: 0; }
+.file-meta { flex: 1; min-width: 0; }
+.file-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-size { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+/* Architecture steps */
+.arch-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  margin: 4px 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.arch-step {
+  flex: 1;
+  text-align: center;
+  position: relative;
+  min-width: 90px;
+}
+.arch-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 22px;
+  right: -1px;
+  width: 50%;
+  height: 2px;
+  background: var(--border-mid);
+}
+.arch-step:not(:first-child)::before {
+  content: '';
+  position: absolute;
+  top: 22px;
+  left: -1px;
+  width: 50%;
+  height: 2px;
+  background: var(--border-mid);
+}
+.arch-dot {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-mid);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  margin: 0 auto 8px;
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s;
+}
+.arch-step.done .arch-dot { background: var(--green-light); border-color: var(--green); }
+.arch-step.done::before, .arch-step.done::after { background: var(--green); }
+.arch-step.active .arch-dot { background: var(--green-light); border-color: var(--green); box-shadow: 0 0 0 4px rgba(29,158,117,0.15); }
+.arch-step.active::before { background: var(--green); }
+.arch-step-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+.arch-step.done .arch-step-label, .arch-step.active .arch-step-label { color: var(--green-dark); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE: ANALYSIS
+═══════════════════════════════════════════════════════════════════ */
+.log-stream {
+  background: #111;
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.log-line { color: #7fff90; }
+.log-line.info { color: #7ec8e3; }
+.log-line.warn { color: #f9cb42; }
+.log-line.error { color: #ff7070; }
+.log-line.dim { color: #555; }
+.log-ts { color: #444; margin-right: 6px; }
+
+.agent-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+.agent-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+.agent-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.agent-badge {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+}
+.agent-name { font-size: 12px; font-weight: 600; }
+.agent-status { font-size: 11px; color: var(--text-secondary); }
+.agent-progress { height: 3px; background: var(--border-light); border-radius: 2px; overflow: hidden; }
+.agent-progress-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.6s; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ACTION PLAN OUTPUT
+═══════════════════════════════════════════════════════════════════ */
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.action-section { margin-bottom: 18px; }
+.action-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  margin-bottom: 7px;
+}
+.verdict-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 16px;
+  border-radius: 24px;
+  font-size: 14px; font-weight: 600;
+}
+.verdict-comply { background: var(--green-light); color: var(--green-dark); }
+.verdict-appeal { background: var(--red-light); color: #8b2020; }
+.verdict-review { background: var(--amber-light); color: #7a4a08; }
+
+.directive-box {
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--green);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.rationale-box {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.deadline-display {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+.deadline-number { font-size: 36px; font-weight: 700; color: var(--red); line-height: 1; }
+.deadline-unit { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.deadline-note { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+
+.dept-display {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+.dept-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--blue-light);
+  color: #1a5490;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px; font-weight: 600;
+  margin-bottom: 6px;
+}
+.authority-name { font-size: 13px; color: var(--text-secondary); }
+
+.meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.meta-item {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+.meta-item-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); margin-bottom: 4px; }
+.meta-item-value { font-size: 13px; font-weight: 500; }
+
+/* Confidence */
+.confidence-row { display: flex; align-items: center; gap: 10px; }
+.confidence-bar { flex: 1; height: 6px; background: var(--border-light); border-radius: 3px; overflow: hidden; }
+.confidence-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+.conf-high .confidence-fill { background: var(--green); }
+.conf-mid .confidence-fill { background: var(--amber); }
+.conf-low .confidence-fill { background: var(--red); }
+.confidence-pct { font-size: 14px; font-weight: 600; min-width: 38px; text-align: right; }
+
+/* Citation */
+.citation-block {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  position: relative;
+}
+.citation-block::before {
+  content: '"';
+  font-size: 48px;
+  font-family: Georgia, serif;
+  color: var(--green);
+  opacity: 0.25;
+  position: absolute;
+  top: -6px;
+  left: 12px;
+  line-height: 1;
+}
+.citation-highlight {
+  background: rgba(239,159,39,0.25);
+  color: var(--text-primary);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+.citation-loc {
+  font-size: 11px; color: var(--text-tertiary); margin-top: 6px;
+  display: flex; align-items: center; gap: 5px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE: REVIEW
+═══════════════════════════════════════════════════════════════════ */
+.review-item {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  margin-bottom: 18px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s;
+}
+.review-item:hover { box-shadow: var(--shadow-md); }
+.review-item.approved { border-left: 3px solid var(--green); }
+.review-item.rejected { border-left: 3px solid var(--red); opacity: 0.7; }
+
+.review-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 20px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+}
+.review-header-info { flex: 1; }
+.review-case { font-size: 14px; font-weight: 600; }
+.review-court { font-size: 12px; color: var(--text-secondary); }
+.review-body { padding: 20px 24px; }
+.review-collapsed { display: none; }
+
+.status-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+  flex-shrink: 0;
+}
+.status-pending { background: var(--amber-light); color: #7a4a08; }
+.status-approved { background: var(--green-light); color: var(--green-dark); }
+.status-rejected { background: var(--red-light); color: #8b2020; }
+
+.edit-textarea {
+  width: 100%;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.6;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.edit-textarea:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(29,158,117,0.12);
+}
+.review-actions {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid var(--border-light);
+}
+
+/* Urgency */
+.urgency-high { color: var(--red); font-weight: 600; }
+.urgency-medium { color: var(--amber); font-weight: 600; }
+.urgency-low { color: var(--green); font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE: DASHBOARD
+═══════════════════════════════════════════════════════════════════ */
+.metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+.metric-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+}
+.metric-card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-tertiary); margin-bottom: 8px; }
+.metric-card-value { font-size: 32px; font-weight: 700; line-height: 1; }
+.metric-card-sub { font-size: 12px; color: var(--text-secondary); margin-top: 5px; }
+.metric-card-trend { font-size: 11px; margin-top: 6px; }
+.trend-up { color: var(--green); }
+.trend-down { color: var(--red); }
+
+.table-wrapper {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.table-toolbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-light);
+}
+.table-toolbar-title { font-size: 14px; font-weight: 600; flex: 1; }
+.table-search {
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  width: 200px;
+}
+.table-search:focus { outline: none; border-color: var(--green); }
+.filter-select {
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  cursor: pointer;
+}
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th {
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  text-align: left;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 13px;
+  vertical-align: middle;
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: var(--bg-secondary); }
+.data-table .case-num { font-weight: 600; font-family: var(--font-mono); font-size: 12px; }
+.data-table .directive-cell { max-width: 260px; }
+.data-table .directive-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.deadline-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px; font-weight: 600;
+}
+.deadline-urgent { background: var(--red-light); color: #8b2020; }
+.deadline-soon { background: var(--amber-light); color: #7a4a08; }
+.deadline-ok { background: var(--green-light); color: var(--green-dark); }
+.dept-chip {
+  display: inline-block;
+  padding: 3px 8px;
+  background: var(--blue-light);
+  color: #1a5490;
+  border-radius: 12px;
+  font-size: 11px; font-weight: 600;
+}
+
+/* Timeline chart */
+.timeline-chart { padding: 8px 0; }
+.timeline-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.timeline-label { width: 80px; font-size: 11px; color: var(--text-secondary); text-align: right; flex-shrink: 0; }
+.timeline-bar-wrap { flex: 1; background: var(--border-light); border-radius: 3px; height: 22px; overflow: hidden; }
+.timeline-bar { height: 100%; border-radius: 3px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; color: #fff; font-weight: 600; transition: width 1s ease; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE: HISTORY
+═══════════════════════════════════════════════════════════════════ */
+.history-item {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+  transition: background 0.12s;
+  cursor: pointer;
+}
+.history-item:hover { background: var(--bg-secondary); }
+.history-item:last-child { border-bottom: none; }
+.history-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.history-content { flex: 1; }
+.history-case { font-size: 13px; font-weight: 600; }
+.history-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.history-date { font-size: 11px; color: var(--text-tertiary); flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE: SETTINGS
+═══════════════════════════════════════════════════════════════════ */
+.settings-group { margin-bottom: 24px; }
+.settings-group-title { font-size: 13px; font-weight: 600; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light); }
+.settings-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+.settings-row:last-child { border-bottom: none; }
+.settings-label { font-size: 13px; font-weight: 500; }
+.settings-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.toggle {
+  width: 40px; height: 22px;
+  border-radius: 11px;
+  background: var(--border-mid);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--green); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle.on::after { transform: translateX(18px); }
+.settings-input {
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: var(--font);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  width: 200px;
+}
+.settings-input:focus { outline: none; border-color: var(--green); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   UTILITIES & MISC
+═══════════════════════════════════════════════════════════════════ */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.gap-sm { gap: 10px !important; }
+.mt-4 { margin-top: 4px; }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.mb-16 { margin-bottom: 16px; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+.text-sm { font-size: 12px; }
+.text-muted { color: var(--text-secondary); }
+.font-600 { font-weight: 600; }
+
+/* Spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border-mid);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+.spinner-lg { width: 22px; height: 22px; border-width: 3px; }
+
+/* Pulse */
+@keyframes pulse-opacity { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.pulsing { animation: pulse-opacity 1.6s ease-in-out infinite; }
+
+/* Fade in */
+@keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.fade-in { animation: fadeIn 0.35s ease forwards; }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 64px 24px;
+  color: var(--text-secondary);
+}
+.empty-icon { font-size: 48px; margin-bottom: 14px; opacity: 0.4; }
+.empty-title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+.empty-sub { font-size: 13px; }
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 28px; right: 28px;
+  background: #1a1917;
+  color: #e8e6df;
+  padding: 11px 20px;
+  border-radius: var(--radius-lg);
+  font-size: 13px; font-weight: 500;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 9999;
+  pointer-events: none;
+  display: flex; align-items: center; gap: 8px;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+#toast.success::before { content: '✓'; color: var(--green); font-weight: 700; }
+#toast.error::before { content: '✕'; color: var(--red); font-weight: 700; }
+#toast.info::before { content: 'ℹ'; color: var(--blue); font-weight: 700; }
+
+/* Divider */
+.divider { border: none; border-top: 1px solid var(--border-light); margin: 16px 0; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════════════════════════════ */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+}
+.modal-backdrop.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--bg-primary);
+  border-radius: var(--radius-xl);
+  width: 680px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  transform: scale(0.96) translateY(10px);
+  transition: transform 0.2s;
+}
+.modal-backdrop.open .modal { transform: scale(1) translateY(0); }
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-light);
+  position: sticky; top: 0; background: var(--bg-primary); z-index: 1;
+}
+.modal-title { font-size: 16px; font-weight: 600; }
+.modal-body { padding: 20px 24px; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-light); display: flex; gap: 8px; justify-content: flex-end; }
+.modal-close {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+.modal-close:hover { background: var(--bg-secondary); }
+
+/* Stepper in modal */
+.form-field { margin-bottom: 16px; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block; }
+.form-input {
+  width: 100%;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  transition: border-color 0.15s;
+}
+.form-input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(29,158,117,0.1); }
+select.form-input { cursor: pointer; }
+
+/* Print styles */
+@media print {
+  .sidebar, .topbar { display: none !important; }
+  .main { margin-left: 0 !important; }
+  .content { overflow: visible !important; }
+  .btn { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TOAST NOTIFICATION
+═══════════════════════════════════════════════════════════════════ -->
+<div id="toast">Saved</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     DETAIL MODAL
+═══════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="detail-modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Case Details</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Close</button>
+      <button class="btn btn-primary" onclick="printModal()">🖨 Print</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     APP SHELL
+═══════════════════════════════════════════════════════════════════ -->
+<div class="app">
+
+  <!-- ─── SIDEBAR ─────────────────────────────────────── -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <div class="logo-icon">⚖</div>
+        <div>
+          <div class="logo-name">VerdictToValue</div>
+        </div>
+      </div>
+      <div class="logo-tagline">Legal AI Decision Support System</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Core Workflow</div>
+      <div class="nav-item active" id="nav-upload" onclick="navTo('upload')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 11V4M5 7l3-3 3 3"/><rect x="2" y="12" width="12" height="1.5" rx="0.75" fill="currentColor" stroke="none"/></svg>
+        Upload Judgment
+      </div>
+      <div class="nav-item" id="nav-analysis" onclick="navTo('analysis')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="5.5"/><path d="M8 5.5v3l1.5 1.5"/></svg>
+        AI Analysis
+        <span class="nav-badge" id="badge-analysis" style="display:none">!</span>
+      </div>
+      <div class="nav-item" id="nav-review" onclick="navTo('review')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h12M2 8h8M2 13h5"/><circle cx="12" cy="12" r="3"/><path d="M11 12l.8.8 1.7-1.6"/></svg>
+        Human Review
+        <span class="nav-badge" id="badge-review">0</span>
+      </div>
+      <div class="nav-item" id="nav-dashboard" onclick="navTo('dashboard')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+        Dashboard
+        <span class="nav-badge green" id="badge-dash">0</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:4px;">
+      <div class="sidebar-section-label">More</div>
+      <div class="nav-item" id="nav-history" onclick="navTo('history')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 4v4l2.5 2.5"/><circle cx="8" cy="8" r="5.5"/></svg>
+        Case History
+      </div>
+      <div class="nav-item" id="nav-settings" onclick="navTo('settings')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M2.93 2.93l1.41 1.41M11.66 11.66l1.41 1.41M2.93 13.07l1.41-1.41M11.66 4.34l1.41-1.41"/></svg>
+        Settings
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-label">AI Model</div>
+      <div class="sidebar-footer-model">Demo Model</div>
+      <div class="sidebar-footer-label" style="margin-top:6px;">System Status</div>
+      <div style="display:flex;align-items:center;gap:5px;margin-top:3px;">
+        <div style="width:7px;height:7px;border-radius:50%;background:var(--green);"></div>
+        <span style="font-size:12px;color:var(--green-dark);font-weight:500;">All systems operational</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── MAIN ─────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- Dynamic topbar -->
+    <div class="topbar" id="topbar">
+      <div style="flex:1">
+        <div class="topbar-title" id="topbar-title">Upload Court Judgment</div>
+        <div class="topbar-sub" id="topbar-sub">Accepts PDF, scanned or digitally generated</div>
+      </div>
+      <div id="topbar-actions"></div>
+    </div>
+
+    <div class="content">
+
+      <!-- ════════════════════════════════════════════════
+           PAGE: UPLOAD
+      ════════════════════════════════════════════════ -->
+      <div class="page active" id="page-upload">
+        <div class="upload-zone" id="dropzone"
+          ondragover="onDragOver(event)"
+          ondrop="onDrop(event)"
+          ondragleave="onDragLeave()"
+          onclick="document.getElementById('file-input').click()">
+          <div class="upload-zone-icon">⚖️</div>
+          <div class="upload-zone-title">Drop Court Judgment PDF Here</div>
+          <div class="upload-zone-sub">Drag & drop or click to browse — supports scanned and digital PDFs, .txt for demo</div>
+          <button class="btn btn-primary" onclick="event.stopPropagation();document.getElementById('file-input').click()">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 11V4M5 7l3-3 3 3"/><path d="M2 13h12" stroke-linecap="round"/></svg>
+            Choose File
+          </button>
+          <input type="file" id="file-input" accept=".pdf,.txt,.doc" style="display:none" onchange="handleFileSelect(event)">
+        </div>
+
+        <div id="file-ready" style="display:none;" class="fade-in">
+          <div class="file-card">
+            <div class="file-icon">📄</div>
+            <div class="file-meta">
+              <div class="file-name" id="fname">—</div>
+              <div class="file-size" id="fsize">—</div>
+            </div>
+            <button class="btn btn-primary" id="analyse-btn" onclick="startAnalysis()">
+              <span class="spinner" id="analyse-spinner" style="display:none"></span>
+              Analyse with AI →
+            </button>
+          </div>
+        </div>
+
+        <div class="card mt-24">
+          <div class="card-title">System Architecture</div>
+          <div class="arch-steps" id="arch-overview">
+            <div class="arch-step done"><div class="arch-dot">📥</div><div class="arch-step-label">PDF Input</div></div>
+            <div class="arch-step done"><div class="arch-dot">🔍</div><div class="arch-step-label">Doc Intelligence</div></div>
+            <div class="arch-step done"><div class="arch-dot">✂️</div><div class="arch-step-label">Chunking &amp; Embed</div></div>
+            <div class="arch-step done"><div class="arch-dot">🤖</div><div class="arch-step-label">Agentic AI</div></div>
+            <div class="arch-step done"><div class="arch-dot">👁️</div><div class="arch-step-label">Human Review</div></div>
+            <div class="arch-step done"><div class="arch-dot">✅</div><div class="arch-step-label">Verified Action</div></div>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-top:12px;">
+            VerdictToValue processes court judgments through a 6-stage agentic pipeline: document intelligence extraction →
+            semantic chunking → parallel AI agents (extraction, legal understanding, action generation) →
+            explainability mapping → human verification → verified action storage. Every output is linked to the source text.
+            No decision is committed without explicit human approval.
+          </p>
+        </div>
+
+        <div class="grid-2 mt-16" style="gap:14px;">
+          <div class="card">
+            <div class="card-title">Supported Judgment Types</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="font-size:13px;display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> High Court Writ Petitions (Article 226)</div>
+              <div style="font-size:13px;display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Supreme Court Civil Appeals</div>
+              <div style="font-size:13px;display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Tribunal Orders (NGT, RERA, CAT)</div>
+              <div style="font-size:13px;display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Contempt Petitions</div>
+              <div style="font-size:13px;display:flex;gap:8px;align-items:flex-start;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">✓</span> Division Bench Directions</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Quick Start — Demo Judgments</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <button class="btn" style="justify-content:flex-start;text-align:left;" onclick="loadDemo('land')">📄 WP 18432/2024 — Land Compensation</button>
+              <button class="btn" style="justify-content:flex-start;text-align:left;" onclick="loadDemo('contempt')">📄 Cont.P 441/2024 — Contempt Notice</button>
+              <button class="btn" style="justify-content:flex-start;text-align:left;" onclick="loadDemo('service')">📄 WP 9871/2023 — Service Matter</button>
+              <button class="btn" style="justify-content:flex-start;text-align:left;" onclick="loadDemo('ngt')">📄 NGT OA 112/2024 — Environmental</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           PAGE: ANALYSIS
+      ════════════════════════════════════════════════ -->
+      <div class="page" id="page-analysis">
+        <!-- Pipeline progress -->
+        <div class="card">
+          <div class="card-title">Pipeline Execution</div>
+          <div class="arch-steps" id="pipeline-steps">
+            <div class="arch-step" id="ps0"><div class="arch-dot">📥</div><div class="arch-step-label">Extraction</div></div>
+            <div class="arch-step" id="ps1"><div class="arch-dot">⚖️</div><div class="arch-step-label">Legal Agent</div></div>
+            <div class="arch-step" id="ps2"><div class="arch-dot">📋</div><div class="arch-step-label">Action Gen</div></div>
+            <div class="arch-step" id="ps3"><div class="arch-dot">🔎</div><div class="arch-step-label">Explainability</div></div>
+            <div class="arch-step" id="ps4"><div class="arch-dot">✅</div><div class="arch-step-label">Complete</div></div>
+          </div>
+        </div>
+
+        <!-- Agent cards -->
+        <div class="agent-cards mt-16">
+          <div class="agent-card" id="agent-extract">
+            <div class="agent-card-header">
+              <div class="agent-badge">📥</div>
+              <div>
+                <div class="agent-name">Extraction Agent</div>
+                <div class="agent-status" id="ag-extract-status">Waiting...</div>
+              </div>
+            </div>
+            <div class="agent-progress"><div class="agent-progress-fill" id="ag-extract-prog" style="width:0%"></div></div>
+          </div>
+          <div class="agent-card" id="agent-legal">
+            <div class="agent-card-header">
+              <div class="agent-badge">⚖️</div>
+              <div>
+                <div class="agent-name">Legal Understanding Agent</div>
+                <div class="agent-status" id="ag-legal-status">Waiting...</div>
+              </div>
+            </div>
+            <div class="agent-progress"><div class="agent-progress-fill" id="ag-legal-prog" style="width:0%"></div></div>
+          </div>
+          <div class="agent-card" id="agent-action">
+            <div class="agent-card-header">
+              <div class="agent-badge">📋</div>
+              <div>
+                <div class="agent-name">Action Plan Generator</div>
+                <div class="agent-status" id="ag-action-status">Waiting...</div>
+              </div>
+            </div>
+            <div class="agent-progress"><div class="agent-progress-fill" id="ag-action-prog" style="width:0%"></div></div>
+          </div>
+          <div class="agent-card" id="agent-explain">
+            <div class="agent-card-header">
+              <div class="agent-badge">🔎</div>
+              <div>
+                <div class="agent-name">Explainability Layer</div>
+                <div class="agent-status" id="ag-explain-status">Waiting...</div>
+              </div>
+            </div>
+            <div class="agent-progress"><div class="agent-progress-fill" id="ag-explain-prog" style="width:0%"></div></div>
+          </div>
+        </div>
+
+        <!-- Log stream -->
+        <div class="card mt-16">
+          <div class="card-header">
+            <div class="card-title" style="margin:0;">Agent Log Stream</div>
+            <button class="btn btn-sm btn-ghost" onclick="clearLog()">Clear</button>
+          </div>
+          <div class="log-stream" id="log-stream">
+            <div class="log-line dim">[ System ] VerdictToValue pipeline initialised</div>
+          </div>
+        </div>
+
+        <!-- AI output (shown after processing) -->
+        <div id="ai-result-section" style="display:none;" class="fade-in">
+
+          <!-- Metadata -->
+          <div class="card mt-16">
+            <div class="card-title">Extracted Case Metadata</div>
+            <div class="meta-grid" id="meta-grid"></div>
+          </div>
+
+          <!-- Action Plan -->
+          <div class="card mt-16">
+            <div class="card-header">
+              <div>
+                <div class="card-title" style="margin:0 0 3px;">AI-Generated Action Plan</div>
+                <div style="font-size:12px;color:var(--text-secondary);">Pending human verification — not yet committed</div>
+              </div>
+              <span class="status-pill status-pending">⏳ Draft</span>
+            </div>
+
+            <div class="action-section">
+              <div class="action-label">Recommended Action</div>
+              <div id="out-verdict"></div>
+              <div class="rationale-box mt-8" id="out-rationale"></div>
+            </div>
+
+            <hr class="divider">
+
+            <div class="action-section">
+              <div class="action-label">Primary Court Directive</div>
+              <div class="directive-box" id="out-directive"></div>
+            </div>
+
+            <hr class="divider">
+
+            <div class="grid-2">
+              <div class="action-section">
+                <div class="action-label">Compliance Deadline</div>
+                <div class="deadline-display" id="out-deadline"></div>
+              </div>
+              <div class="action-section">
+                <div class="action-label">Responsible Department &amp; Authority</div>
+                <div class="dept-display" id="out-department"></div>
+              </div>
+            </div>
+
+            <hr class="divider">
+
+            <div class="action-section">
+              <div class="action-label">Additional Directives</div>
+              <div id="out-additional" style="font-size:13px;color:var(--text-secondary);line-height:1.7;"></div>
+            </div>
+
+            <hr class="divider">
+
+            <div class="action-section">
+              <div class="action-label">AI Confidence Score</div>
+              <div id="out-confidence"></div>
+            </div>
+
+            <div class="review-actions">
+              <button class="btn btn-primary" onclick="sendToReview()">Send to Human Review →</button>
+              <button class="btn" onclick="navTo('upload')">← Analyse Another</button>
+            </div>
+          </div>
+
+          <!-- Explainability -->
+          <div class="card mt-16">
+            <div class="card-title">Explainability — Source Citations</div>
+            <div id="out-citations"></div>
+          </div>
+
+          <!-- Raw JSON (collapsible) -->
+          <div class="card mt-16">
+            <div class="card-header" style="cursor:pointer;" onclick="toggleRaw()">
+              <div class="card-title" style="margin:0;">Raw AI Response (JSON)</div>
+              <button class="btn btn-sm btn-ghost" id="raw-toggle-btn">Show ▼</button>
+            </div>
+            <pre id="raw-json" style="display:none;font-size:11px;font-family:var(--font-mono);overflow-x:auto;background:var(--bg-secondary);border-radius:var(--radius-md);padding:14px;margin-top:12px;line-height:1.6;white-space:pre-wrap;"></pre>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           PAGE: REVIEW
+      ════════════════════════════════════════════════ -->
+      <div class="page" id="page-review">
+        <div id="review-container">
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <div class="empty-title">No items pending review</div>
+            <div class="empty-sub">Upload and analyse a judgment to generate an action plan for review</div>
+            <button class="btn btn-primary mt-16" onclick="navTo('upload')">Upload Judgment</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           PAGE: DASHBOARD
+      ════════════════════════════════════════════════ -->
+      <div class="page" id="page-dashboard">
+        <!-- Metrics -->
+        <div class="metrics-row" id="metrics-row">
+          <div class="metric-card">
+            <div class="metric-card-label">Total Cases</div>
+            <div class="metric-card-value" id="m-total">—</div>
+            <div class="metric-card-sub">this financial year</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-label">Immediate Action</div>
+            <div class="metric-card-value" style="color:var(--red)" id="m-urgent">—</div>
+            <div class="metric-card-sub">within 7 days</div>
+            <div class="metric-card-trend trend-down" id="m-urgent-trend"></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-label">Appeal Candidates</div>
+            <div class="metric-card-value" style="color:var(--amber)" id="m-appeal">—</div>
+            <div class="metric-card-sub">awaiting legal review</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-label">Completed</div>
+            <div class="metric-card-value" style="color:var(--green)" id="m-done">—</div>
+            <div class="metric-card-sub">actions taken</div>
+            <div class="metric-card-trend trend-up" id="m-done-trend"></div>
+          </div>
+        </div>
+
+        <!-- Charts row -->
+        <div class="grid-2 mb-16" style="gap:14px;">
+          <div class="card">
+            <div class="card-title">Cases by Department</div>
+            <div class="timeline-chart" id="dept-chart"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Deadline Urgency Distribution</div>
+            <div class="timeline-chart" id="urgency-chart"></div>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrapper">
+          <div class="table-toolbar">
+            <div class="table-toolbar-title">Active Action Plans</div>
+            <input type="text" class="table-search" placeholder="Search cases..." id="table-search" oninput="filterTable()">
+            <select class="filter-select" id="dept-filter" onchange="filterTable()">
+              <option value="">All Departments</option>
+              <option>Revenue & Land Records</option>
+              <option>Public Works</option>
+              <option>Finance</option>
+              <option>Health</option>
+              <option>Land & Survey</option>
+              <option>Municipal</option>
+              <option>Forest</option>
+            </select>
+            <select class="filter-select" id="urgency-filter" onchange="filterTable()">
+              <option value="">All Urgency</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+            <button class="btn btn-sm" onclick="exportCSV()">↓ Export CSV</button>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Case No.</th>
+                <th>Court</th>
+                <th>Directive</th>
+                <th>Department</th>
+                <th>Authority</th>
+                <th>Deadline</th>
+                <th>Urgency</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="dash-tbody"></tbody>
+          </table>
+          <div id="dash-empty" style="display:none;" class="empty-state">
+            <div class="empty-icon">🔍</div>
+            <div class="empty-title">No cases match your filter</div>
+            <div class="empty-sub">Try clearing the search or filter</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           PAGE: HISTORY
+      ════════════════════════════════════════════════ -->
+      <div class="page" id="page-history">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title" style="margin:0;">Case Processing History</div>
+            <button class="btn btn-sm btn-danger" onclick="clearHistory()">Clear History</button>
+          </div>
+          <div id="history-list"></div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           PAGE: SETTINGS
+      ════════════════════════════════════════════════ -->
+      <div class="page" id="page-settings">
+        <div class="card">
+          <div class="settings-group">
+            <div class="settings-group-title">Department Configuration</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Primary Department</div>
+                <div class="settings-sub">Your department for auto-assignment</div>
+              </div>
+              <input type="text" class="settings-input" id="s-dept" value="Revenue & Land Records" onchange="saveSetting('dept',this.value)">
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Officer Name</div>
+                <div class="settings-sub">Appears on approved action plans</div>
+              </div>
+              <input type="text" class="settings-input" id="s-officer" value="Shri. A. K. Sharma, IAS" onchange="saveSetting('officer',this.value)">
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">State / Jurisdiction</div>
+                <div class="settings-sub">Used to filter relevant court orders</div>
+              </div>
+              <select class="settings-input" id="s-state" onchange="saveSetting('state',this.value)">
+                <option>Telangana</option>
+                <option>Andhra Pradesh</option>
+                <option>Karnataka</option>
+                <option>Maharashtra</option>
+                <option>Tamil Nadu</option>
+                <option>Delhi</option>
+                <option>Uttar Pradesh</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <div class="settings-group-title">AI Pipeline Settings</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Auto-detect deadline from legal norms</div>
+                <div class="settings-sub">Infer deadline when not explicit (e.g. "forthwith" = 7 days)</div>
+              </div>
+              <div class="toggle on" id="t-deadline" onclick="toggleSetting('t-deadline','deadline')"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Mandatory human review</div>
+                <div class="settings-sub">Require approval before adding to dashboard</div>
+              </div>
+              <div class="toggle on" id="t-review" onclick="toggleSetting('t-review','review')"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Confidence threshold for auto-flag</div>
+                <div class="settings-sub">Flag items below this confidence for extra scrutiny</div>
+              </div>
+              <input type="number" class="settings-input" value="75" min="0" max="100" style="width:80px;" onchange="saveSetting('threshold',this.value)"> <span style="font-size:13px;color:var(--text-secondary);margin-left:6px;">%</span>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">AI Model</div>
+                <div class="settings-sub"> Demo Model </div>
+              </div>
+              <select class="settings-input" onchange="saveSetting('model',this.value)">
+                <option value="Demo Model" selected>Demo Model</option>
+                <option value="Demo Model">Demo Model</option>
+                <option value="Demo Model">Demo Model</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <div class="settings-group-title">Notification & Alerts</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Alert on deadlines within 7 days</div>
+                <div class="settings-sub">Show red urgency indicators</div>
+              </div>
+              <div class="toggle on" id="t-alert7" onclick="toggleSetting('t-alert7','alert7')"></div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Show contempt risk warnings</div>
+                <div class="settings-sub">Highlight orders where non-compliance = contempt</div>
+              </div>
+              <div class="toggle on" id="t-contempt" onclick="toggleSetting('t-contempt','contempt')"></div>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <div class="settings-group-title">Data Management</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Clear all dashboard cases</div>
+                <div class="settings-sub">Remove all verified action plans (irreversible)</div>
+              </div>
+              <button class="btn btn-danger btn-sm" onclick="confirmClearAll()">Clear All</button>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-label">Export all data as JSON</div>
+                <div class="settings-sub">Download complete dataset for backup</div>
+              </div>
+              <button class="btn btn-sm" onclick="exportJSON()">Export JSON</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end .content -->
+  </div><!-- end .main -->
+</div><!-- end .app -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+const STATE = {
+  currentText: null,
+  currentFileName: '',
+  aiResult: null,
+  reviewItems: [],
+  dashItems: [],
+  historyItems: [],
+  settings: { dept: 'Revenue & Land Records', officer: 'Shri. A. K. Sharma, IAS', state: 'Telangana', model: 'Demo Model', deadline: true, review: true, threshold: 75, alert7: true, contempt: true }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// DEMO JUDGMENTS
+// ═══════════════════════════════════════════════════════════════════
+const DEMOS = {
+  land: {
+    name: 'WP_18432_2024_Telangana_HC.pdf',
+    text: `IN THE HIGH COURT OF TELANGANA
+WRIT PETITION No. 18432 of 2024
+
+BETWEEN:
+M/s. Ramaiah Infrastructure Pvt. Ltd.  ... PETITIONER
+AND
+The State of Telangana, rep. by its Principal Secretary,
+Dept. of Revenue & Land Records  ... RESPONDENTS
+
+JUDGMENT
+Dated: 15 April 2024
+Coram: Honourable Mr. Justice S.V. Bhatt
+
+FACTS: The petitioner's land measuring 4.5 acres in Sy.No.142 of Kondapur Village was acquired by the Government through notification dated 12.03.2021 for NH-65 road widening. Award was passed under Section 11 of the Right to Fair Compensation and Transparency in Land Acquisition, Rehabilitation and Resettlement Act, 2013, determining compensation of Rs.4,87,00,000/-. Despite repeated representations dated 06.07.2023, 14.09.2023 and 02.01.2024, the compensation has not been released.
+
+DIRECTIONS:
+After hearing the learned counsel for both parties and examining the records, this Court finds that there is no justification for the inordinate delay in releasing the duly awarded land compensation.
+
+1. The State Government, through the Principal Secretary, Revenue Department, is hereby DIRECTED to release the land compensation amount of Rs. 4,87,00,000/- (Rupees Four Crore Eighty Seven Lakhs only) to the petitioner within a period of SIX WEEKS from the date of receipt of a copy of this order.
+
+2. In the event of non-compliance within the stipulated period, interest at the rate of 9% per annum shall accrue on the outstanding amount from the date of this order until actual payment.
+
+3. The respondents shall file a compliance report before this Court within EIGHT WEEKS from today.
+
+4. If the compensation is not paid within six weeks, the petitioner is at liberty to approach this Court for initiating contempt proceedings.
+
+The Writ Petition is accordingly allowed. No order as to costs.
+(S.V. Bhatt, J.)`
+  },
+  contempt: {
+    name: 'ContP_441_2024_HC_Telangana.pdf',
+    text: `IN THE HIGH COURT OF TELANGANA
+CONTEMPT PETITION No. 441 of 2024
+In WP No. 7823/2022
+
+BETWEEN:
+Smt. K. Padmavathi ... PETITIONER
+AND
+The Commissioner, GHMC and Ors. ... RESPONDENTS
+
+CONTEMPT NOTICE
+Dated: 22 March 2024
+Coram: Hon'ble Mr. Justice P. Raghunath
+
+BACKGROUND: This Court in WP 7823/2022 had directed vide order dated 11.08.2023 that the respondent Commissioner, GHMC shall restore the encroached footpath on Road No. 12, Banjara Hills, within three months. The three-month period expired on 11.11.2023. The petitioner contends that no action has been taken.
+
+CONTEMPT FINDINGS:
+The affidavit filed by the Commissioner, GHMC is not satisfactory and reveals a deliberate non-compliance of this Court's order dated 11.08.2023.
+
+This Court hereby:
+1. Issues NOTICE to the Commissioner, GHMC to SHOW CAUSE within TWO WEEKS why contempt proceedings should not be initiated against him for willful disobedience of this Court's order.
+
+2. DIRECTS the Commissioner, GHMC to personally appear before this Court on the next date of hearing (21.04.2024) along with the status report of footpath restoration.
+
+3. The encroachment shall be REMOVED and footpath restored within FOUR WEEKS from today failing which the Commissioner shall face contempt action including personal liability.
+
+4. The Municipal Commissioner shall file an action-taken report with photographic evidence.
+
+Matter is adjourned to 21.04.2024.
+(P. Raghunath, J.)`
+  },
+  service: {
+    name: 'WP_9871_2023_Service_Matter.pdf',
+    text: `IN THE HIGH COURT OF TELANGANA
+WRIT PETITION No. 9871 of 2023
+
+BETWEEN:
+Sri. Mohammed Imran Khan  ... PETITIONER
+AND
+The State of Telangana, rep by Secretary, Health Dept. ... RESPONDENT
+
+JUDGMENT
+Dated: 10 March 2024
+Coram: Hon'ble Justice K.C. Murali
+
+SUBJECT: Regularization of service and payment of salary arrears for the period 01.04.2018 to 31.03.2023.
+
+FINDINGS: The petitioner was appointed as Staff Nurse on a temporary basis in 2016 and has been continuously working. The respondent department failed to regularize his services despite being eligible under the Regularization Rules 2018. His salary has been irregularly withheld since April 2018 without any order.
+
+DIRECTIONS:
+1. The respondent-State is hereby DIRECTED to regularize the services of the petitioner as Staff Nurse with effect from 01.04.2018 within a period of FOUR WEEKS from today.
+
+2. The Secretary, Health Department shall ensure payment of all salary arrears for the period from 01.04.2018 to 31.03.2023 calculated at the applicable scale, within SIX WEEKS.
+
+3. The seniority of the petitioner shall be fixed accordingly from the date of regularization.
+
+4. The arrears amount, once calculated by the department, shall be paid in two equal installments — first within six weeks and balance within twelve weeks from today.
+
+5. If the government intends to appeal, it shall obtain a stay from the appropriate forum, otherwise compliance is mandatory.
+
+Writ Petition allowed. No costs.
+(K.C. Murali, J.)`
+  },
+  ngt: {
+    name: 'NGT_OA_112_2024_Environmental.pdf',
+    text: `NATIONAL GREEN TRIBUNAL
+(PRINCIPAL BENCH)
+Original Application No. 112 of 2024
+
+IN THE MATTER OF:
+Environment Protection Committee ... APPLICANT
+AND
+State of Telangana, TSPCB and Ors. ... RESPONDENTS
+
+ORDER
+Dated: 05 April 2024
+Coram: Hon'ble Justice (Retd.) A.B. Prasad, Chairperson
+
+SUBJECT: Illegal dumping of industrial effluents in Musi River near Uppal industrial zone.
+
+The Tribunal has considered the joint inspection report filed by the Central Pollution Control Board and Telangana State Pollution Control Board dated 28.03.2024 which confirms illegal discharge of untreated effluents from 14 industrial units.
+
+ORDERS:
+1. The Telangana State Pollution Control Board (TSPCB) is DIRECTED to close down operations of the 14 defaulting industrial units identified in the inspection report with immediate effect, within 48 HOURS of this order.
+
+2. The Principal Secretary, Environment, Forest & Climate Change Department, shall constitute a High-Level Monitoring Committee within ONE WEEK to oversee remediation of the affected 3.2 km stretch of Musi River.
+
+3. The State Government shall deposit Rs. 5,00,00,000/- (Five Crore) as environmental compensation into the Tribunal's account within FOUR WEEKS for remediation activities.
+
+4. A detailed remediation action plan shall be submitted to this Tribunal within THREE WEEKS.
+
+5. TSPCB shall submit weekly compliance reports for the next three months.
+
+6. The defaulting industrial units may apply for resumption of operations only after obtaining fresh clearances and demonstrating zero discharge compliance.
+
+Non-compliance shall attract additional penalty and personal liability of the Principal Secretary.
+
+The matter is listed for compliance review on 15.05.2024.
+(A.B. Prasad, J.)`
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// SEED DATA — pre-loaded dashboard
+// ═══════════════════════════════════════════════════════════════════
+const SEED_CASES = [
+  { id: 1, caseNumber: 'WP 7234/2023', court: 'HC Telangana', date: '01 Mar 2024', verdict: 'comply', directive: 'Release gratuity amount of ₹8.4 Lakh to retired employee within 30 days.', department: 'Finance', authority: 'Director of Accounts', deadline: '30 days', deadlineClass: 'deadline-soon', urgency: 'medium', amount: '₹8,40,000', status: 'approved', confidenceScore: 0.91, rationale: 'Clear mandatory order with no appealable ground.' },
+  { id: 2, caseNumber: 'WP 11209/2024', court: 'HC Telangana', date: '14 Mar 2024', verdict: 'comply', directive: 'File counter affidavit explaining delay in teacher transfers.', department: 'Health', authority: 'Commissioner of Health', deadline: '7 days', deadlineClass: 'deadline-urgent', urgency: 'high', amount: null, status: 'approved', confidenceScore: 0.88, rationale: 'Procedural direction — requires immediate filing.' },
+  { id: 3, caseNumber: 'WA 445/2023', court: 'Div Bench HC', date: '20 Feb 2024', verdict: 'appeal', directive: 'Judgment adverse on land acquisition pricing. Consider statutory appeal.', department: 'Revenue & Land Records', authority: 'Principal Secretary Revenue', deadline: '45 days', deadlineClass: 'deadline-ok', urgency: 'low', amount: null, status: 'approved', confidenceScore: 0.78, rationale: 'Pricing methodology disputed — merits an appeal to Division Bench.' },
+  { id: 4, caseNumber: 'Cont.P 312/2024', court: 'HC Telangana', date: '05 Apr 2024', verdict: 'comply', directive: 'Restore demolished boundary wall within 14 days or face contempt action.', department: 'Municipal', authority: 'Commissioner GHMC', deadline: '14 days', deadlineClass: 'deadline-urgent', urgency: 'high', amount: null, status: 'approved', confidenceScore: 0.95, rationale: 'Contempt notice — immediate action required to avoid personal liability.' },
+  { id: 5, caseNumber: 'NGT OA 88/2023', court: 'NGT Principal Bench', date: '28 Mar 2024', verdict: 'comply', directive: 'Deposit ₹2 Crore environmental compensation within 4 weeks; submit remediation plan.', department: 'Forest', authority: 'Pr. Secretary Env. & Forest', deadline: '4 weeks', deadlineClass: 'deadline-soon', urgency: 'medium', amount: '₹2,00,00,000', status: 'approved', confidenceScore: 0.89, rationale: 'Tribunal order — environmental penalty with fixed timeline.' },
+  { id: 6, caseNumber: 'CRL.P 1821/2024', court: 'HC Telangana', date: '12 Apr 2024', verdict: 'review', directive: 'Examine legality of arrest of contractor; submit report in 3 weeks.', department: 'Public Works', authority: 'Engineer-in-Chief PWD', deadline: '3 weeks', deadlineClass: 'deadline-soon', urgency: 'medium', amount: null, status: 'approved', confidenceScore: 0.72, rationale: 'Complex inter-departmental matter — legal team review recommended.' },
+  { id: 7, caseNumber: 'WP 5533/2023', court: 'HC Telangana', date: '08 Apr 2024', verdict: 'comply', directive: 'Regularize 34 daily-wage sanitation workers and pay arrears within 6 weeks.', department: 'Municipal', authority: 'Commissioner GHMC', deadline: '6 weeks', deadlineClass: 'deadline-soon', urgency: 'medium', amount: '₹42,00,000', status: 'approved', confidenceScore: 0.93, rationale: 'Settled precedent on regularisation — comply without delay.' },
+  { id: 8, caseNumber: 'WP 14001/2024', court: 'HC Telangana', date: '15 Apr 2024', verdict: 'comply', directive: 'Issue Form 7A land records correction within 3 weeks to petitioner.', department: 'Land & Survey', authority: 'District Collector', deadline: '3 weeks', deadlineClass: 'deadline-soon', urgency: 'medium', amount: null, status: 'approved', confidenceScore: 0.87, rationale: 'Procedural correction order — straightforward compliance.' },
+];
+STATE.dashItems = [...SEED_CASES];
+
+// Seed history
+STATE.historyItems = [
+  { caseNumber: 'WP 7234/2023', court: 'HC Telangana', action: 'Sent to Review', status: 'approved', date: '01 Mar 2024', color: 'var(--green)' },
+  { caseNumber: 'WP 11209/2024', court: 'HC Telangana', action: 'Sent to Review', status: 'approved', date: '14 Mar 2024', color: 'var(--green)' },
+  { caseNumber: 'WA 445/2023', court: 'Div Bench', action: 'Marked for Appeal', status: 'approved', date: '20 Feb 2024', color: 'var(--amber)' },
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+const PAGE_META = {
+  upload:   { title: 'Upload Court Judgment', sub: 'Accepts PDF — scanned or digitally generated', actions: '' },
+  analysis: { title: 'AI Analysis Pipeline', sub: '', actions: '' },
+  review:   { title: 'Human Verification Layer', sub: 'Review, edit, approve or reject AI-generated action plans', actions: '' },
+  dashboard:{ title: 'Decision Dashboard', sub: 'Verified action plans — department view', actions: `<button class="btn" onclick="navTo('upload')">+ New Judgment</button>` },
+  history:  { title: 'Case Processing History', sub: 'Audit trail of all processed judgments', actions: '' },
+  settings: { title: 'System Settings', sub: 'Configure AI pipeline, alerts and department defaults', actions: '' },
+};
+
+function navTo(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  const navEl = document.getElementById('nav-' + id);
+  if (navEl) navEl.classList.add('active');
+  const m = PAGE_META[id];
+  document.getElementById('topbar-title').textContent = m.title;
+  document.getElementById('topbar-sub').textContent = m.sub;
+  document.getElementById('topbar-actions').innerHTML = m.actions;
+  if (id === 'dashboard') { renderDashboard(); renderCharts(); }
+  if (id === 'history') renderHistory();
+  if (id === 'review') renderReview();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════════════════════════════════
+function onDragOver(e) { e.preventDefault(); document.getElementById('dropzone').classList.add('dragging'); }
+function onDragLeave() { document.getElementById('dropzone').classList.remove('dragging'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('dragging');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+}
+function handleFileSelect(e) { if (e.target.files[0]) handleFile(e.target.files[0]); }
+function handleFile(file) {
+  STATE.currentFileName = file.name;
+  document.getElementById('fname').textContent = file.name;
+  document.getElementById('fsize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+  document.getElementById('file-ready').style.display = '';
+  const reader = new FileReader();
+  reader.onload = e => { STATE.currentText = e.target.result; };
+  reader.readAsText(file);
+}
+function loadDemo(key) {
+  const d = DEMOS[key];
+  STATE.currentText = d.text;
+  STATE.currentFileName = d.name;
+  document.getElementById('fname').textContent = d.name;
+  document.getElementById('fsize').textContent = (d.text.length / 1024).toFixed(1) + ' KB (demo)';
+  document.getElementById('file-ready').style.display = '';
+  toast('Demo judgment loaded', 'info');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ANALYSIS PIPELINE
+// ═══════════════════════════════════════════════════════════════════
+const PIPE_STEPS = [
+  { id: 'ps0', agentProg: 'ag-extract-prog', agentStatus: 'ag-extract-status', name: 'Extraction Agent',
+    logs: [
+      ['dim', 'Initialising document intelligence layer...'],
+      ['info', '[ DocIntel ] PDF structure parsed: detected digital text'],
+      ['', '[ DocIntel ] Preserving logical document structure...'],
+      ['', '[ ExtractionAgent ] Identifying case metadata segments...'],
+      ['', '[ ExtractionAgent ] Found: court header, case number, parties, date, coram'],
+      ['', '[ ExtractionAgent ] Segmenting: Facts → Arguments → Findings → Directions'],
+      ['info', '[ Chunker ] Splitting into 18 semantic chunks for LLM context'],
+      ['info', '[ Embeddings ] Generating vector embeddings for similarity search...'],
+    ]
+  },
+  { id: 'ps1', agentProg: 'ag-legal-prog', agentStatus: 'ag-legal-status', name: 'Legal Understanding Agent',
+    logs: [
+      ['', '[ LegalAgent ] Loading legal directive classifier...'],
+      ['', '[ LegalAgent ] Scanning chunks for directive language patterns...'],
+      ['', '[ LegalAgent ] MATCH: "hereby DIRECTED" — mandatory compliance language'],
+      ['', '[ LegalAgent ] Scanning for penal clauses (contempt, interest, costs)...'],
+      ['warn', '[ LegalAgent ] Found penal clause: interest @9% p.a. on non-compliance'],
+      ['', '[ LegalAgent ] Identifying timeline expressions...'],
+      ['info', '[ LegalAgent ] Timeline detected: "SIX WEEKS from date of receipt"'],
+      ['info', '[ LegalAgent ] Classifying order type: MANDATORY COMPLIANCE ORDER'],
+    ]
+  },
+  { id: 'ps2', agentProg: 'ag-action-prog', agentStatus: 'ag-action-status', name: 'Action Plan Generator',
+    logs: [
+      ['', '[ ActionGen ] Mapping legal directives to administrative tasks...'],
+      ['', '[ ActionGen ] Determining comply vs appeal recommendation...'],
+      ['', '[ ActionGen ] No strong grounds for appeal identified'],
+      ['info', '[ ActionGen ] Verdict: COMPLY — mandatory order, clear timeline'],
+      ['', '[ ActionGen ] Computing actual deadline from receipt date...'],
+      ['', '[ ActionGen ] Identifying responsible department and authority...'],
+      ['info', '[ ActionGen ] Department: Revenue & Land Records | Authority: Principal Secretary'],
+      ['info', '[ ActionGen ] Generating structured action plan JSON...'],
+    ]
+  },
+  { id: 'ps3', agentProg: 'ag-explain-prog', agentStatus: 'ag-explain-status', name: 'Explainability Layer',
+    logs: [
+      ['', '[ Explain ] Linking each output field to source paragraph...'],
+      ['', '[ Explain ] Citation 1: directive ← Para 1, Directions section'],
+      ['', '[ Explain ] Citation 2: deadline ← "within a period of SIX WEEKS"'],
+      ['', '[ Explain ] Citation 3: authority ← "Principal Secretary, Revenue Department"'],
+      ['info', '[ Explain ] Computing confidence scores per field...'],
+      ['info', '[ Explain ] Overall confidence: 94% (high)'],
+      ['', '[ Explain ] Generating human-readable rationale...'],
+      ['', '[ Explain ] Flagging contempt risk: YES (4 weeks penalty clause)'],
+    ]
+  }
+];
+
+async function startAnalysis() {
+  if (!STATE.currentText) { toast('Please load a judgment first', 'error'); return; }
+  navTo('analysis');
+
+  // Reset pipeline UI
+  for (let i = 0; i < 5; i++) {
+    const el = document.getElementById('ps' + i);
+    if (el) el.className = 'arch-step';
+  }
+  document.querySelectorAll('.agent-progress-fill').forEach(el => { el.style.width = '0%'; });
+  document.getElementById('ag-extract-status').textContent = 'Waiting...';
+  document.getElementById('ag-legal-status').textContent = 'Waiting...';
+  document.getElementById('ag-action-status').textContent = 'Waiting...';
+  document.getElementById('ag-explain-status').textContent = 'Waiting...';
+  document.getElementById('ai-result-section').style.display = 'none';
+  document.getElementById('log-stream').innerHTML = '<div class="log-line dim">[ VerdictToValue ] Pipeline started — ' + STATE.currentFileName + '</div>';
+  document.getElementById('topbar-sub').textContent = STATE.currentFileName;
+
+  await runPipeline();
+}
+
+async function runPipeline() {
+  for (let stepIdx = 0; stepIdx < PIPE_STEPS.length; stepIdx++) {
+    const step = PIPE_STEPS[stepIdx];
+    const psEl = document.getElementById(step.id);
+    psEl.className = 'arch-step active';
+    document.getElementById(step.agentStatus).textContent = 'Running...';
+
+    let progress = 0;
+    for (const [cls, msg] of step.logs) {
+      addLog(msg, cls);
+      progress += Math.round(100 / step.logs.length);
+      document.getElementById(step.agentProg).style.width = Math.min(progress, 95) + '%';
+      await sleep(380);
+    }
+    document.getElementById(step.agentProg).style.width = '100%';
+    document.getElementById(step.agentStatus).textContent = 'Complete ✓';
+    psEl.className = 'arch-step done';
+    addLog('[ ' + step.name + ' ] Complete ✓', 'info');
+    await sleep(200);
+  }
+
+  // Step 4 — API call
+  document.getElementById('ps4').className = 'arch-step active';
+  addLog('[ API ] Sending to Demo Model...', 'info');
+
+  try {
+    const result = await callAPI(STATE.currentText);
+    STATE.aiResult = result;
+    document.getElementById('ps4').className = 'arch-step done';
+    addLog('[ API ] Response received and validated ✓', 'info');
+    addLog('[ VerdictToValue ] Pipeline complete. Action plan ready for review.', 'info');
+    document.getElementById('topbar-sub').textContent = STATE.currentFileName + ' — Analysis complete';
+    renderResult(result);
+    document.getElementById('ai-result-section').style.display = '';
+    document.getElementById('badge-analysis').style.display = '';
+    document.getElementById('raw-json').textContent = JSON.stringify(result, null, 2);
+  } catch (err) {
+    addLog('[ API ] Error: ' + err.message, 'error');
+    addLog('[ Fallback ] Using demo result for: ' + STATE.currentFileName, 'warn');
+    const fallback = buildFallback();
+    STATE.aiResult = fallback;
+    document.getElementById('ps4').className = 'arch-step done';
+    document.getElementById('topbar-sub').textContent = STATE.currentFileName + ' — Demo result';
+    renderResult(fallback);
+    document.getElementById('ai-result-section').style.display = '';
+    document.getElementById('badge-analysis').style.display = '';
+    document.getElementById('raw-json').textContent = JSON.stringify(fallback, null, 2);
+  }
+}
+
+function addLog(msg, cls = '') {
+  const ts = new Date().toLocaleTimeString('en-IN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const el = document.getElementById('log-stream');
+  const line = document.createElement('div');
+  line.className = 'log-line ' + cls;
+  line.innerHTML = `<span class="log-ts">[${ts}]</span>${msg}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog() {
+  document.getElementById('log-stream').innerHTML = '<div class="log-line dim">Log cleared.</div>';
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ═══════════════════════════════════════════════════════════════════
+//  API CALL
+// ═══════════════════════════════════════════════════════════════════
+async function callAPI(text) {
+  const response = await fetch('', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'Demo Model',
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: `You are a senior legal AI assistant for Indian government departments. Carefully analyse this court judgment and extract a complete structured action plan. Respond ONLY with valid JSON, no markdown fences, no explanation outside JSON.
+
+Required JSON schema:
+{
+  "caseNumber": "string",
+  "court": "string",
+  "date": "string",
+  "judge": "string",
+  "parties": { "petitioner": "string", "respondent": "string" },
+  "caseType": "Writ Petition" | "Civil Appeal" | "Contempt" | "NGT" | "Tribunal" | "Other",
+  "verdict": "comply" | "appeal" | "review",
+  "directive": "Primary court directive in 1-2 clear sentences",
+  "additionalDirectives": ["array of other directions if any"],
+  "deadline": { "value": number, "unit": "hours" | "days" | "weeks" | "months", "raw": "exact phrase from judgment", "notes": "penalties or consequences" },
+  "department": "string",
+  "responsibleAuthority": "string",
+  "amount": "string or null",
+  "contemptRisk": true | false,
+  "confidenceScore": number 0-1,
+  "citationText": "exact sentence from judgment that is the primary directive",
+  "citationLocation": "section/paragraph identifier",
+  "secondaryCitations": [{"text": "...", "location": "..."}],
+  "rationale": "1-2 sentence explanation of the verdict recommendation",
+  "urgency": "high" | "medium" | "low",
+  "keywords": ["array of 3-5 legal keywords"]
+}
+
+Court Judgment:
+${text.substring(0, 4000)}`
+      }]
+    })
+  });
+  if (!response.ok) throw new Error('HTTP ' + response.status);
+  const data = await response.json();
+  const raw = data.content.map(c => c.text || '').join('');
+  const clean = raw.replace(/```json|```/g, '').trim();
+  const parsed = JSON.parse(clean);
+  return parsed;
+}
+
+function buildFallback() {
+  // Detect which demo is loaded
+  const t = STATE.currentText || '';
+  if (t.includes('Contempt')) {
+    return { caseNumber: 'Cont.P 441/2024', court: 'HC Telangana', date: '22 March 2024', judge: 'Hon\'ble Mr. Justice P. Raghunath', parties: { petitioner: 'Smt. K. Padmavathi', respondent: 'Commissioner, GHMC' }, caseType: 'Contempt', verdict: 'comply', directive: 'Show cause within two weeks and appear personally before court; restore encroached footpath within four weeks.', additionalDirectives: ['File action-taken report with photographic evidence', 'Personal appearance of Commissioner on 21.04.2024'], deadline: { value: 2, unit: 'weeks', raw: 'show cause within TWO WEEKS', notes: 'Personal liability of Commissioner if footpath not restored within 4 weeks' }, department: 'Municipal', responsibleAuthority: 'Commissioner, GHMC', amount: null, contemptRisk: true, confidenceScore: 0.96, citationText: 'Issues NOTICE to the Commissioner, GHMC to SHOW CAUSE within TWO WEEKS why contempt proceedings should not be initiated', citationLocation: 'Order Para 1', secondaryCitations: [{ text: 'encroachment shall be REMOVED and footpath restored within FOUR WEEKS from today', location: 'Order Para 3' }], rationale: 'Active contempt proceeding — immediate personal compliance required; no grounds for appeal.', urgency: 'high', keywords: ['contempt', 'GHMC', 'footpath', 'mandatory compliance', 'personal liability'] };
+  }
+  if (t.includes('NGT')) {
+    return { caseNumber: 'NGT OA 112/2024', court: 'National Green Tribunal', date: '05 April 2024', judge: 'Hon\'ble Justice (Retd.) A.B. Prasad', parties: { petitioner: 'Environment Protection Committee', respondent: 'State of Telangana, TSPCB' }, caseType: 'NGT', verdict: 'comply', directive: 'Close 14 defaulting industrial units within 48 hours; deposit ₹5 Crore environmental compensation within 4 weeks.', additionalDirectives: ['Constitute High-Level Monitoring Committee within 1 week', 'Submit remediation action plan within 3 weeks', 'File weekly compliance reports for 3 months'], deadline: { value: 48, unit: 'hours', raw: 'within 48 HOURS of this order', notes: 'Additional penalty and personal liability of Principal Secretary for non-compliance' }, department: 'Forest', responsibleAuthority: 'Principal Secretary, Environment & Forest', amount: '₹5,00,00,000', contemptRisk: true, confidenceScore: 0.97, citationText: 'DIRECTED to close down operations of the 14 defaulting industrial units identified in the inspection report with immediate effect, within 48 HOURS', citationLocation: 'Orders, Para 1', secondaryCitations: [{ text: 'State Government shall deposit Rs. 5,00,00,000/- as environmental compensation within FOUR WEEKS', location: 'Orders, Para 3' }], rationale: 'Urgent NGT order — 48-hour compliance window and large financial penalty. Immediate action mandatory.', urgency: 'high', keywords: ['NGT', 'industrial effluent', 'Musi River', 'environmental compensation', 'TSPCB'] };
+  }
+  if (t.includes('Staff Nurse') || t.includes('service')) {
+    return { caseNumber: 'WP 9871/2023', court: 'HC Telangana', date: '10 March 2024', judge: 'Hon\'ble Justice K.C. Murali', parties: { petitioner: 'Sri. Mohammed Imran Khan', respondent: 'State of Telangana, Health Dept.' }, caseType: 'Writ Petition', verdict: 'comply', directive: 'Regularize petitioner as Staff Nurse from 01.04.2018 within four weeks and pay salary arrears within six weeks.', additionalDirectives: ['Fix seniority from date of regularization', 'Pay arrears in two equal installments — first within 6 weeks, balance within 12 weeks'], deadline: { value: 4, unit: 'weeks', raw: 'within a period of FOUR WEEKS from today', notes: 'Arrears payment in two installments over 12 weeks' }, department: 'Health', responsibleAuthority: 'Secretary, Health Department', amount: 'Salary arrears 2018–2023 (to be calculated)', contemptRisk: false, confidenceScore: 0.91, citationText: 'respondent-State is hereby DIRECTED to regularize the services of the petitioner as Staff Nurse with effect from 01.04.2018 within a period of FOUR WEEKS', citationLocation: 'Directions, Para 1', secondaryCitations: [{ text: 'Secretary, Health Department shall ensure payment of all salary arrears for the period from 01.04.2018 to 31.03.2023', location: 'Directions, Para 2' }], rationale: 'Service matter with clear settled legal position — no strong grounds for appeal; arrears obligation is mandatory.', urgency: 'medium', keywords: ['regularization', 'salary arrears', 'Staff Nurse', 'Health Dept', 'service matter'] };
+  }
+  // Default: land compensation
+  return { caseNumber: 'WP No. 18432 of 2024', court: 'High Court of Telangana', date: '15 April 2024', judge: 'Hon\'ble Mr. Justice S.V. Bhatt', parties: { petitioner: 'M/s. Ramaiah Infrastructure Pvt. Ltd.', respondent: 'State of Telangana, Dept. of Revenue & Land Records' }, caseType: 'Writ Petition', verdict: 'comply', directive: 'Release land compensation of ₹4,87,00,000 to petitioner within six weeks of receipt of this order.', additionalDirectives: ['File compliance report before court within eight weeks', 'If compensation not paid within six weeks, petitioner may initiate contempt proceedings', 'Interest @9% per annum accrues from date of order on delayed payment'], deadline: { value: 6, unit: 'weeks', raw: 'within a period of SIX WEEKS from the date of receipt of a copy of this order', notes: 'Non-compliance attracts 9% p.a. interest from order date; contempt risk after 6 weeks' }, department: 'Revenue & Land Records', responsibleAuthority: 'Principal Secretary, Revenue Department', amount: '₹4,87,00,000', contemptRisk: true, confidenceScore: 0.94, citationText: 'the State Government, through the Principal Secretary, Revenue Department, is hereby DIRECTED to release the land compensation amount of Rs. 4,87,00,000/- to the petitioner within a period of SIX WEEKS from the date of receipt of a copy of this order', citationLocation: 'Directions, Para 1', secondaryCitations: [{ text: 'interest at the rate of 9% per annum shall accrue on the outstanding amount from the date of this order', location: 'Directions, Para 2' }, { text: 'respondents shall file a compliance report before this Court within EIGHT WEEKS', location: 'Directions, Para 3' }], rationale: 'Court issued a clear mandatory direction. No appeal-worthy error identified. Non-compliance will trigger contempt proceedings and financial penalties.', urgency: 'high', keywords: ['land compensation', 'LARR Act', 'mandatory compliance', 'Revenue Dept', 'contempt risk'] };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER ANALYSIS RESULT
+// ═══════════════════════════════════════════════════════════════════
+function renderResult(r) {
+  // Metadata
+  const meta = [
+    { label: 'Case Number', value: r.caseNumber },
+    { label: 'Court', value: r.court },
+    { label: 'Date', value: r.date },
+    { label: 'Judge', value: r.judge || '—' },
+    { label: 'Petitioner', value: r.parties?.petitioner || '—' },
+    { label: 'Respondent', value: r.parties?.respondent || '—' },
+    { label: 'Case Type', value: r.caseType || '—' },
+    { label: 'Amount', value: r.amount || 'Not specified' },
+    { label: 'Contempt Risk', value: r.contemptRisk ? '⚠ YES — Personal liability' : 'No' },
+  ];
+  document.getElementById('meta-grid').innerHTML = meta.map(m => `
+    <div class="meta-item">
+      <div class="meta-item-label">${m.label}</div>
+      <div class="meta-item-value" style="${m.label === 'Contempt Risk' && r.contemptRisk ? 'color:var(--red)' : ''}">${m.value}</div>
+    </div>`).join('');
+
+  // Verdict
+  const vc = r.verdict === 'comply' ? 'verdict-comply' : r.verdict === 'appeal' ? 'verdict-appeal' : 'verdict-review';
+  const vt = r.verdict === 'comply' ? '✓ Comply with Order' : r.verdict === 'appeal' ? '↑ File Appeal' : '⚠ Seek Legal Review';
+  document.getElementById('out-verdict').innerHTML = `<span class="verdict-pill ${vc}">${vt}</span>`;
+  document.getElementById('out-rationale').textContent = r.rationale || '—';
+
+  // Directive
+  document.getElementById('out-directive').textContent = r.directive || '—';
+
+  // Deadline
+  document.getElementById('out-deadline').innerHTML = `
+    <div>
+      <div class="deadline-number">${r.deadline?.value || '—'}</div>
+      <div class="deadline-unit">${r.deadline?.unit || ''}</div>
+    </div>
+    <div class="deadline-note">
+      <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:3px;">From judgment text:</div>
+      <em style="color:var(--text-secondary);">"${r.deadline?.raw || '—'}"</em>
+      <div style="margin-top:6px;">${r.deadline?.notes || ''}</div>
+    </div>`;
+
+  // Department
+  document.getElementById('out-department').innerHTML = `
+    <div class="dept-badge">🏛 ${r.department || '—'}</div>
+    <div class="authority-name" style="margin-top:6px;font-size:13px;color:var(--text-secondary);">${r.responsibleAuthority || '—'}</div>`;
+
+  // Additional directives
+  const ad = r.additionalDirectives || [];
+  document.getElementById('out-additional').innerHTML = ad.length
+    ? ad.map((d,i) => `<div style="display:flex;gap:8px;margin-bottom:8px;"><span style="color:var(--green);font-weight:700;flex-shrink:0;">${i+2}.</span>${d}</div>`).join('')
+    : '<span style="color:var(--text-tertiary);">No additional directives identified.</span>';
+
+  // Confidence
+  const conf = Math.round((r.confidenceScore || 0.85) * 100);
+  const confClass = conf >= 80 ? 'conf-high' : conf >= 60 ? 'conf-mid' : 'conf-low';
+  document.getElementById('out-confidence').innerHTML = `
+    <div class="confidence-row ${confClass}">
+      <div class="confidence-bar"><div class="confidence-fill" style="width:${conf}%"></div></div>
+      <div class="confidence-pct">${conf}%</div>
+      <div style="font-size:12px;color:var(--text-secondary);">${conf >= 80 ? 'High — reliable extraction' : conf >= 60 ? 'Medium — review carefully' : 'Low — manual verification needed'}</div>
+    </div>
+    <div style="font-size:11px;color:var(--text-tertiary);margin-top:6px;">Keywords: ${(r.keywords||[]).join(' · ')}</div>`;
+
+  // Citations
+  const primary = `<div class="citation-block" style="margin-bottom:12px;">
+    <div>${r.citationText ? r.citationText.replace(/(DIRECTED|ORDERED|directed|ordered|shall|must|within)/g, m => `<span class="citation-highlight">${m}</span>`) : '—'}</div>
+    <div class="citation-loc">📍 ${r.citationLocation || 'Judgment body'}</div>
+  </div>`;
+  const secondary = (r.secondaryCitations || []).map(c => `
+    <div class="citation-block" style="margin-bottom:12px;">
+      <div>${c.text}</div>
+      <div class="citation-loc">📍 ${c.location}</div>
+    </div>`).join('');
+  document.getElementById('out-citations').innerHTML =
+    `<div class="action-label">Primary Directive Citation</div>${primary}`
+    + (secondary ? `<div class="action-label" style="margin-top:12px;">Additional Citations</div>${secondary}` : '');
+}
+
+function toggleRaw() {
+  const el = document.getElementById('raw-json');
+  const btn = document.getElementById('raw-toggle-btn');
+  if (el.style.display === 'none') { el.style.display = ''; btn.textContent = 'Hide ▲'; }
+  else { el.style.display = 'none'; btn.textContent = 'Show ▼'; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SEND TO REVIEW
+// ═══════════════════════════════════════════════════════════════════
+function sendToReview() {
+  if (!STATE.aiResult) { toast('No analysis result yet', 'error'); return; }
+  const item = { ...STATE.aiResult, _id: Date.now(), _status: 'pending', _editedDirective: STATE.aiResult.directive, _fileName: STATE.currentFileName };
+  STATE.reviewItems.unshift(item);
+  STATE.historyItems.unshift({ caseNumber: item.caseNumber, court: item.court, action: 'Sent to Review', status: 'pending', date: new Date().toLocaleDateString('en-IN'), color: 'var(--amber)' });
+  updateBadges();
+  toast('Sent to Human Review', 'success');
+  navTo('review');
+}
+
+function updateBadges() {
+  const pending = STATE.reviewItems.filter(i => i._status === 'pending').length;
+  const rb = document.getElementById('badge-review');
+  rb.textContent = pending;
+  rb.style.display = pending > 0 ? '' : 'none';
+  document.getElementById('badge-dash').textContent = STATE.dashItems.length;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// REVIEW PAGE
+// ═══════════════════════════════════════════════════════════════════
+function renderReview() {
+  const container = document.getElementById('review-container');
+  if (STATE.reviewItems.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No items pending review</div><div class="empty-sub">Upload and analyse a judgment to generate an action plan</div><button class="btn btn-primary" style="margin-top:16px;" onclick="navTo('upload')">Upload Judgment</button></div>`;
+    return;
+  }
+
+  container.innerHTML = STATE.reviewItems.map((item, idx) => {
+    const vc = item.verdict === 'comply' ? 'verdict-comply' : item.verdict === 'appeal' ? 'verdict-appeal' : 'verdict-review';
+    const vt = item.verdict === 'comply' ? '✓ Comply' : item.verdict === 'appeal' ? '↑ Appeal' : '⚠ Review';
+    const sc = item._status === 'approved' ? 'status-approved' : item._status === 'rejected' ? 'status-rejected' : 'status-pending';
+    const st = item._status.charAt(0).toUpperCase() + item._status.slice(1);
+    const conf = Math.round((item.confidenceScore || 0.85) * 100);
+    const confClass = conf >= 80 ? 'conf-high' : conf >= 60 ? 'conf-mid' : 'conf-low';
+
+    return `<div class="review-item ${item._status}" id="ri-${idx}">
+      <div class="review-header" onclick="toggleReviewItem(${idx})">
+        <div class="review-header-info">
+          <div class="review-case">${item.caseNumber} — ${item.court}</div>
+          <div class="review-court">${item.date} · ${item._fileName || ''}</div>
+        </div>
+        <span class="verdict-pill ${vc}" style="font-size:12px;padding:4px 12px;">${vt}</span>
+        <span class="status-pill ${sc}">${st}</span>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="margin-left:4px;flex-shrink:0;"><path d="M4 6l4 4 4-4"/></svg>
+      </div>
+      <div class="review-body" id="rb-${idx}">
+        <div class="grid-2" style="gap:12px;margin-bottom:16px;">
+          <div>
+            <div class="action-label">Department</div>
+            <div class="dept-badge">🏛 ${item.department || '—'}</div>
+          </div>
+          <div>
+            <div class="action-label">Deadline</div>
+            <div style="font-size:16px;font-weight:700;color:var(--red);">${item.deadline?.value || '—'} ${item.deadline?.unit || ''}</div>
+            <div class="text-sm text-muted">${item.deadline?.notes || ''}</div>
+          </div>
+          <div>
+            <div class="action-label">Urgency</div>
+            <span class="urgency-${item.urgency}">${(item.urgency||'').toUpperCase()}</span>
+            ${item.contemptRisk ? '<span style="margin-left:8px;font-size:11px;color:var(--red);">⚠ Contempt Risk</span>' : ''}
+          </div>
+          <div>
+            <div class="action-label">AI Confidence</div>
+            <div class="confidence-row ${confClass}" style="gap:8px;">
+              <div class="confidence-bar" style="width:100px;"><div class="confidence-fill" style="width:${conf}%"></div></div>
+              <span style="font-size:13px;font-weight:600;">${conf}%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-label">Court Directive (editable)</div>
+        <textarea class="edit-textarea" id="edit-${idx}" ${item._status !== 'pending' ? 'disabled' : ''}>${item._editedDirective || item.directive}</textarea>
+
+        <div style="margin-top:12px;">
+          <div class="action-label">Notes / Instructions for Department</div>
+          <textarea class="edit-textarea" id="notes-${idx}" placeholder="Add internal notes or instructions for the department..." ${item._status !== 'pending' ? 'disabled' : ''}>${item._notes || ''}</textarea>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div class="action-label">Rationale</div>
+          <div class="rationale-box">${item.rationale || '—'}</div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div class="action-label">Primary Citation</div>
+          <div class="citation-block" style="font-size:12px;">"${(item.citationText||'').substring(0,200)}..."
+            <div class="citation-loc">📍 ${item.citationLocation || '—'}</div>
+          </div>
+        </div>
+
+        ${item._status === 'pending' ? `
+        <div class="review-actions">
+          <button class="btn btn-primary" onclick="approveItem(${idx})">✓ Approve &amp; Save to Dashboard</button>
+          <button class="btn btn-amber" onclick="requestAmendment(${idx})">✏ Approve with Edits</button>
+          <button class="btn btn-danger" onclick="rejectItem(${idx})">✕ Reject — No Action</button>
+        </div>` : `
+        <div class="review-actions">
+          <div style="font-size:12px;color:var(--text-secondary);">Action taken · ${new Date().toLocaleDateString('en-IN')}</div>
+          ${item._status === 'approved' ? '<button class="btn btn-sm" onclick="viewDashCase('+idx+')">View in Dashboard →</button>' : ''}
+        </div>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleReviewItem(idx) {
+  const body = document.getElementById('rb-' + idx);
+  body.style.display = body.style.display === 'none' ? '' : body.style.display === '' ? 'none' : '';
+  if (!body.style.display) body.style.display = 'none';
+}
+
+function approveItem(idx) {
+  const item = STATE.reviewItems[idx];
+  item._editedDirective = document.getElementById('edit-' + idx).value;
+  item._notes = document.getElementById('notes-' + idx).value;
+  item._status = 'approved';
+  addToDashboard(item);
+  STATE.historyItems.unshift({ caseNumber: item.caseNumber, court: item.court, action: 'Approved — Added to Dashboard', status: 'approved', date: new Date().toLocaleDateString('en-IN'), color: 'var(--green)' });
+  updateBadges();
+  renderReview();
+  toast('Approved and saved to dashboard', 'success');
+}
+
+function requestAmendment(idx) {
+  approveItem(idx);
+}
+
+function rejectItem(idx) {
+  STATE.reviewItems[idx]._status = 'rejected';
+  STATE.historyItems.unshift({ caseNumber: STATE.reviewItems[idx].caseNumber, court: STATE.reviewItems[idx].court, action: 'Rejected — No Action Required', status: 'rejected', date: new Date().toLocaleDateString('en-IN'), color: 'var(--red)' });
+  updateBadges();
+  renderReview();
+  toast('Item rejected', 'error');
+}
+
+function addToDashboard(item) {
+  // Avoid duplicates
+  if (STATE.dashItems.find(d => d.caseNumber === item.caseNumber)) return;
+  const dv = item.deadline?.value;
+  const du = item.deadline?.unit;
+  const dl = dv && du ? `${dv} ${du}` : '—';
+  const dlClass = item.urgency === 'high' ? 'deadline-urgent' : item.urgency === 'medium' ? 'deadline-soon' : 'deadline-ok';
+  STATE.dashItems.unshift({
+    id: item._id || Date.now(),
+    caseNumber: item.caseNumber,
+    court: item.court,
+    date: item.date,
+    verdict: item.verdict,
+    directive: item._editedDirective || item.directive,
+    department: item.department,
+    authority: item.responsibleAuthority,
+    deadline: dl,
+    deadlineClass: dlClass,
+    urgency: item.urgency,
+    amount: item.amount,
+    status: 'approved',
+    confidenceScore: item.confidenceScore,
+    rationale: item.rationale,
+    notes: item._notes,
+    contemptRisk: item.contemptRisk,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════
+function renderDashboard() {
+  const items = getFilteredItems();
+  const tbody = document.getElementById('dash-tbody');
+  const empty = document.getElementById('dash-empty');
+
+  // Metrics
+  const allItems = STATE.dashItems;
+  document.getElementById('m-total').textContent = allItems.length;
+  document.getElementById('m-urgent').textContent = allItems.filter(i => i.urgency === 'high').length;
+  document.getElementById('m-appeal').textContent = allItems.filter(i => i.verdict === 'appeal').length;
+  document.getElementById('m-done').textContent = allItems.filter(i => i.status === 'approved').length;
+
+  if (items.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+  } else {
+    empty.style.display = 'none';
+    tbody.innerHTML = items.map(item => `
+      <tr>
+        <td><span class="case-num">${item.caseNumber}</span></td>
+        <td style="color:var(--text-secondary);font-size:12px;">${item.court}</td>
+        <td class="directive-cell"><div class="directive-text" title="${item.directive}">${item.directive}</div></td>
+        <td><span class="dept-chip">${item.department}</span></td>
+        <td style="font-size:12px;color:var(--text-secondary);">${item.authority || '—'}</td>
+        <td><span class="deadline-chip ${item.deadlineClass}">${item.deadline}</span></td>
+        <td><span class="urgency-${item.urgency}">${item.urgency.toUpperCase()}</span>${item.contemptRisk ? ' <span title="Contempt Risk" style="font-size:12px;">⚠</span>' : ''}</td>
+        <td>
+          <div style="display:flex;gap:4px;">
+            <button class="btn btn-sm" onclick="openCaseModal(${item.id})">View</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+}
+
+function getFilteredItems() {
+  const search = (document.getElementById('table-search')?.value || '').toLowerCase();
+  const dept = document.getElementById('dept-filter')?.value || '';
+  const urgency = document.getElementById('urgency-filter')?.value || '';
+  return STATE.dashItems.filter(item => {
+    if (search && !JSON.stringify(item).toLowerCase().includes(search)) return false;
+    if (dept && item.department !== dept) return false;
+    if (urgency && item.urgency !== urgency) return false;
+    return true;
+  });
+}
+
+function filterTable() { renderDashboard(); }
+
+function renderCharts() {
+  // Department chart
+  const deptCounts = {};
+  STATE.dashItems.forEach(i => { deptCounts[i.department] = (deptCounts[i.department] || 0) + 1; });
+  const deptEl = document.getElementById('dept-chart');
+  const maxD = Math.max(...Object.values(deptCounts), 1);
+  const colors = { 'Revenue & Land Records': '#1D9E75', 'Public Works': '#378ADD', 'Finance': '#EF9F27', 'Health': '#E24B4A', 'Municipal': '#7F77DD', 'Forest': '#3B6D11', 'Land & Survey': '#5DCAA5' };
+  deptEl.innerHTML = Object.entries(deptCounts).sort((a,b) => b[1]-a[1]).map(([dept, count]) => `
+    <div class="timeline-bar-row">
+      <div class="timeline-label">${dept.split(' ')[0]}</div>
+      <div class="timeline-bar-wrap">
+        <div class="timeline-bar" style="width:${Math.round(count/maxD*100)}%;background:${colors[dept]||'var(--green)'};">${count}</div>
+      </div>
+    </div>`).join('');
+
+  // Urgency chart
+  const urg = { high: 0, medium: 0, low: 0 };
+  STATE.dashItems.forEach(i => { urg[i.urgency] = (urg[i.urgency] || 0) + 1; });
+  const maxU = Math.max(...Object.values(urg), 1);
+  const urgEl = document.getElementById('urgency-chart');
+  urgEl.innerHTML = [
+    ['High', urg.high, 'var(--red)'],
+    ['Medium', urg.medium, 'var(--amber)'],
+    ['Low', urg.low, 'var(--green)'],
+  ].map(([label, count, color]) => `
+    <div class="timeline-bar-row">
+      <div class="timeline-label">${label}</div>
+      <div class="timeline-bar-wrap">
+        <div class="timeline-bar" style="width:${Math.round(count/maxU*100)}%;background:${color};">${count}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CASE DETAIL MODAL
+// ═══════════════════════════════════════════════════════════════════
+function openCaseModal(id) {
+  const item = STATE.dashItems.find(d => d.id === id);
+  if (!item) return;
+  document.getElementById('modal-title').textContent = item.caseNumber + ' — ' + item.court;
+  const vc = item.verdict === 'comply' ? 'verdict-comply' : item.verdict === 'appeal' ? 'verdict-appeal' : 'verdict-review';
+  const vt = item.verdict === 'comply' ? '✓ Comply with Order' : item.verdict === 'appeal' ? '↑ File Appeal' : '⚠ Seek Legal Review';
+  document.getElementById('modal-body').innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+      <span class="verdict-pill ${vc}" style="font-size:13px;">${vt}</span>
+      <span class="urgency-${item.urgency}" style="font-size:13px;font-weight:600;padding:6px 0;">${item.urgency.toUpperCase()} URGENCY</span>
+      ${item.contemptRisk ? '<span style="color:var(--red);font-size:13px;font-weight:600;padding:6px 0;">⚠ CONTEMPT RISK</span>' : ''}
+    </div>
+
+    <div class="meta-grid" style="grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;">
+      <div class="meta-item"><div class="meta-item-label">Date of Judgment</div><div class="meta-item-value">${item.date}</div></div>
+      <div class="meta-item"><div class="meta-item-label">Department</div><div class="meta-item-value">${item.department}</div></div>
+      <div class="meta-item"><div class="meta-item-label">Responsible Authority</div><div class="meta-item-value">${item.authority || '—'}</div></div>
+      <div class="meta-item"><div class="meta-item-label">Amount Involved</div><div class="meta-item-value">${item.amount || 'Not specified'}</div></div>
+      <div class="meta-item"><div class="meta-item-label">Deadline</div><div class="meta-item-value" style="color:var(--red);font-weight:700;">${item.deadline}</div></div>
+      <div class="meta-item"><div class="meta-item-label">AI Confidence</div><div class="meta-item-value">${Math.round((item.confidenceScore||0.85)*100)}%</div></div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <div class="action-label">Primary Court Directive</div>
+      <div class="directive-box">${item.directive}</div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <div class="action-label">Rationale</div>
+      <div class="rationale-box">${item.rationale || '—'}</div>
+    </div>
+
+    ${item.notes ? `<div style="margin-bottom:14px;"><div class="action-label">Department Notes</div><div class="rationale-box" style="border-left-color:var(--blue);">${item.notes}</div></div>` : ''}
+
+    <div style="padding:14px;background:var(--bg-secondary);border-radius:var(--radius-md);font-size:12px;color:var(--text-secondary);">
+      <strong style="color:var(--text-primary);">Status:</strong> Verified and approved by human reviewer · Added to dashboard
+    </div>`;
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('detail-modal')) {
+    document.getElementById('detail-modal').classList.remove('open');
+  }
+}
+
+function printModal() { window.print(); }
+
+// ═══════════════════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════════════════
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  if (STATE.historyItems.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📜</div><div class="empty-title">No history yet</div></div>`;
+    return;
+  }
+  el.innerHTML = STATE.historyItems.map(h => `
+    <div class="history-item">
+      <div class="history-dot" style="background:${h.color}"></div>
+      <div class="history-content">
+        <div class="history-case">${h.caseNumber}</div>
+        <div class="history-desc">${h.court} · ${h.action}</div>
+      </div>
+      <div class="history-date">${h.date}</div>
+    </div>`).join('');
+}
+
+function clearHistory() {
+  if (confirm('Clear all history? This cannot be undone.')) {
+    STATE.historyItems = [];
+    renderHistory();
+    toast('History cleared', 'info');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════════════
+function saveSetting(key, val) {
+  STATE.settings[key] = val;
+  toast('Setting saved', 'success');
+}
+function toggleSetting(elId, key) {
+  const el = document.getElementById(elId);
+  el.classList.toggle('on');
+  STATE.settings[key] = el.classList.contains('on');
+  toast(STATE.settings[key] ? 'Enabled' : 'Disabled', 'info');
+}
+function confirmClearAll() {
+  if (confirm('This will remove all ' + STATE.dashItems.length + ' cases from the dashboard. Are you sure?')) {
+    STATE.dashItems = [];
+    updateBadges();
+    toast('Dashboard cleared', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════════════
+function exportCSV() {
+  const items = getFilteredItems();
+  const headers = ['Case Number','Court','Date','Directive','Department','Authority','Deadline','Urgency','Verdict','Amount'];
+  const rows = items.map(i => [i.caseNumber, i.court, i.date||'', i.directive?.replace(/,/g,''), i.department, i.authority||'', i.deadline, i.urgency, i.verdict, i.amount||''].map(v => `"${v}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  download('verdict_to_value_export.csv', csv, 'text/csv');
+  toast('CSV exported', 'success');
+}
+function exportJSON() {
+  const data = { exportDate: new Date().toISOString(), cases: STATE.dashItems, history: STATE.historyItems };
+  download('verdict_to_value_data.json', JSON.stringify(data, null, 2), 'application/json');
+  toast('JSON exported', 'success');
+}
+function download(filename, content, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = filename;
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════════
+let toastTimer = null;
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = type;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
+updateBadges();
+// Pre-load review with sample items for demo
+STATE.reviewItems = [
+  {
+    _id: 9001, _status: 'pending', _fileName: 'WP_7234_2023_Gratuity.pdf',
+    caseNumber: 'WP 22145/2024', court: 'HC Telangana', date: '10 Apr 2024',
+    judge: 'Hon\'ble Justice R. Subramanyam',
+    parties: { petitioner: 'Sri. K.V. Rao (Retd. Officer)', respondent: 'State of Telangana, Finance Dept.' },
+    verdict: 'comply',
+    directive: 'Release pension arrears of ₹1,24,000 pending since retirement on 31.01.2023, within three weeks.',
+    additionalDirectives: ['Include interest at 6% p.a. for delayed payment', 'File compliance affidavit within 30 days'],
+    _editedDirective: 'Release pension arrears of ₹1,24,000 pending since retirement on 31.01.2023, within three weeks.',
+    deadline: { value: 3, unit: 'weeks', raw: 'within three weeks from today', notes: 'Interest at 6% p.a. applicable' },
+    department: 'Finance', responsibleAuthority: 'Director of Accounts & Treasuries',
+    amount: '₹1,24,000', contemptRisk: false,
+    confidenceScore: 0.92, urgency: 'medium',
+    citationText: 'the respondent-State is hereby directed to release the pending pension arrears of Rs.1,24,000/- within a period of three weeks from the date of receipt of this order',
+    citationLocation: 'Direction, Para 1',
+    secondaryCitations: [{ text: 'interest at 6% per annum shall be paid on the delayed amount', location: 'Direction, Para 2' }],
+    rationale: 'Clear mandatory pension direction — established entitlement with no appeal merit.',
+    keywords: ['pension', 'arrears', 'Finance Dept', 'retired officer']
+  }
+];
+updateBadges();
+</script>
+</body>
+</html>
